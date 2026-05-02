@@ -1,0 +1,17 @@
+{
+  "name": "web-ui",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "wrapper": "rm -rf .output && nuxt build && go run .",
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview"
+  },
+  "dependencies": {
+    "nuxt": "latest",
+    "vue": "latest",
+    "vue-router": "latest"
+  }
+}

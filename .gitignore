@@ -1,0 +1,6 @@
+__pycache__/
+.claude/
+artifacts/
+services/web-ui/.nuxt/
+services/web-ui/.output/
+services/web-ui/node_modules/

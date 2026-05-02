@@ -1,0 +1,46 @@
+name: Release on Tag
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Run CI script
+        id: ci
+        run: |
+          python ci.py | tee ci_output.txt
+
+      - name: Check CI result
+        id: check
+        run: |
+          last_line=$(tail -n 1 ci_output.txt)
+          echo "Last line: $last_line"
+
+          if [[ "$last_line" == *"16 successful and 0 failed"* ]]; then
+            echo "success=true" >> $GITHUB_OUTPUT
+          else
+            echo "success=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        if: steps.check.outputs.success == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: artifacts/**
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
