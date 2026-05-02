@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        module: [cli, daemon, web-ui]
+        module: [cli, daemon, webui]
         target:
           - linux-amd64
           - linux-arm64
@@ -52,14 +52,14 @@ jobs:
           go-version: "1.22"
 
       # -------------------------
-      # Web UI deps ONLY
+      # WebUI deps only
       # -------------------------
       - name: Setup Bun
-        if: matrix.module == 'web-ui'
+        if: matrix.module == 'webui'
         uses: oven-sh/setup-bun@v2
 
-      - name: Install Web UI deps
-        if: matrix.module == 'web-ui'
+      - name: Install WebUI deps
+        if: matrix.module == 'webui'
         working-directory: services/web-ui
         shell: bash
         run: bun install
@@ -75,7 +75,7 @@ jobs:
             --target ${{ matrix.target }}
 
       # -------------------------
-      # Artifacts
+      # Artifacts debug
       # -------------------------
       - name: Show artifacts
         run: ls -R artifacts || true
