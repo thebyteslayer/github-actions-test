@@ -13,10 +13,13 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
         with:
-          python-version: '3.x'
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
 
       - name: Run CI script
         id: ci
