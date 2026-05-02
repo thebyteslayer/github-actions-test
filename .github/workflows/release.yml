@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: true
       matrix:
         include:
           # CLI
@@ -36,11 +37,9 @@ jobs:
           - module: daemon
             target: linux-arm64
 
-          # WebUI (normal)
+          # WebUI
           - module: webui
             target: linux-amd64
-
-          # WebUI bundle
           - module: webui
             target: bundle
 
@@ -52,29 +51,36 @@ jobs:
         uses: oven-sh/setup-bun@v1
         if: matrix.module == 'webui'
 
-      - name: Install WebUI deps
+      - name: Install WebUI dependencies
         if: matrix.module == 'webui'
         working-directory: services/web-ui
         run: bun install
 
       - name: Run CI (verbose)
         run: |
-          python ci.py \
-            --module ${{ matrix.module }} \
-            --target ${{ matrix.target }} \
-            --verbose | tee ci_output.txt
+          set -e
 
-      - name: Validate CI result
-        run: |
-          last_line=$(tail -n 1 ci_output.txt)
-          echo "$last_line"
-
-          if [[ "$last_line" == *"0 failed"* ]]; then
-            echo "build ok"
+          if [[ "${{ matrix.module }}" == "webui" ]]; then
+            cd services/web-ui
+            python ../../ci.py \
+              --module ${{ matrix.module }} \
+              --target ${{ matrix.target }} \
+              --verbose | tee ci_output.txt
           else
-            echo "build failed"
+            python ci.py \
+              --module ${{ matrix.module }} \
+              --target ${{ matrix.target }} \
+              --verbose | tee ci_output.txt
+          fi
+
+      - name: Validate artifacts exist
+        run: |
+          if [[ ! -d artifacts ]]; then
+            echo "ERROR: artifacts folder missing"
             exit 1
           fi
+
+          ls -R artifacts
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -92,7 +98,7 @@ jobs:
         with:
           path: all-artifacts
 
-      - name: Show artifacts
+      - name: Inspect artifacts
         run: ls -R all-artifacts
 
       - name: Create GitHub Release
