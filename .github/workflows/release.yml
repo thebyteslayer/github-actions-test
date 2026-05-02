@@ -3,80 +3,113 @@ name: CI Build Matrix
 on:
   push:
     branches: [ main ]
+    tags:
+      - "v*"
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
-    runs-on: ${{ matrix.target.runner }}
+    runs-on: ubuntu-latest
 
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         module: [cli, daemon, webui]
         target:
-          - name: linux-amd64
-            runner: ubuntu-latest
-
-          - name: linux-arm64
-            runner: ubuntu-24.04-arm
-
-          - name: darwin-arm64
-            runner: macos-14
-
-          - name: windows-amd64
-            runner: windows-latest
-
-          - name: windows-arm64
-            runner: windows-11-arm
-
-          - name: bundle
-            runner: ubuntu-latest
+          - linux-amd64
+          - linux-arm64
+          - darwin-arm64
+          - windows-amd64
+          - windows-arm64
+          - bundle
 
         exclude:
-          # bundle only exists for webui → removes 10 invalid combos
           - module: cli
-            target: { name: bundle, runner: ubuntu-latest }
+            target: bundle
           - module: daemon
-            target: { name: bundle, runner: ubuntu-latest }
+            target: bundle
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # -------------------------
+      # Tooling (global)
+      # -------------------------
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # Bun only needed for webui builds
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      # -------------------------
+      # WebUI deps only
+      # -------------------------
       - name: Setup Bun
         if: matrix.module == 'webui'
         uses: oven-sh/setup-bun@v2
 
-      - name: Install webui dependencies
+      - name: Install WebUI deps
         if: matrix.module == 'webui'
         working-directory: services/webui
         shell: bash
-        run: |
-          bun install
+        run: bun install
 
+      # -------------------------
+      # Build
+      # -------------------------
       - name: Run CI build
         shell: bash
         run: |
           python ci.py --verbose \
             --module ${{ matrix.module }} \
-            --target ${{ matrix.target.name }}
+            --target ${{ matrix.target }}
 
-      - name: List artifacts
-        shell: bash
-        run: |
-          ls -R artifacts || true
+      # -------------------------
+      # Artifacts
+      # -------------------------
+      - name: Show artifacts
+        run: ls -R artifacts || true
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.module }}-${{ matrix.target.name }}
-          path: artifacts/**
+          name: ${{ matrix.module }}-${{ matrix.target }}
+          path: artifacts/
+          if-no-files-found: error
+          compression-level: 0
+
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Inspect artifacts
+        run: ls -R artifacts
+
+      - name: Create release
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          draft: false
+          prerelease: false
+          artifacts: "artifacts/**/*"
+          token: ${{ secrets.GITHUB_TOKEN }}
