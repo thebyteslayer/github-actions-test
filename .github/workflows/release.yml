@@ -5,6 +5,9 @@ on:
     tags:
       - '*'
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -26,3 +29,25 @@ jobs:
         id: ci
         run: |
           python ci.py | tee ci_output.txt
+
+      - name: Check CI result
+        id: check
+        run: |
+          last_line=$(tail -n 1 ci_output.txt)
+          echo "Last line: $last_line"
+
+          if [[ "$last_line" == *"16 successful and 0 failed"* ]]; then
+            echo "success=true" >> $GITHUB_OUTPUT
+          else
+            echo "success=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Create GitHub Release and upload artifacts
+        if: steps.check.outputs.success == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: artifacts/**
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
