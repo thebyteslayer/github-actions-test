@@ -63,7 +63,7 @@ OUTPUT_FORMAT = "{name}-{target}-v{version}{extension}"
 
 Bundle = namedtuple("Bundle", ["command", "source", "compression"])
 Target = namedtuple("Target", ["key", "label", "goos", "goarch", "extension", "archive"], defaults=[None, None, "", False])
-Module = namedtuple("Module", ["key", "label", "binary_name", "path", "valid_targets", "bundle"], defaults=[None])
+Module = namedtuple("Module", ["key", "label", "binary_name", "path", "valid_targets", "bundle", "artifact_dir"], defaults=[None, None])
 
 _BINARY_TARGETS = (
     Target("darwin-arm64",  "darwin-arm64",  "darwin",  "arm64"),
@@ -78,10 +78,9 @@ _BINARY_KEYS   = frozenset(t.key for t in _BINARY_TARGETS)
 TARGETS = _BINARY_TARGETS + (_BUNDLE_TARGET,)
 
 MODULES = (
-    Module("localboot",       "CLI",    "localboot",        ROOT / "applications" / "cli", _BINARY_KEYS),
-    Module("localbootd",      "Daemon", "localbootd",       ROOT / "services" / "daemon",  _BINARY_KEYS),
-    Module("localboot-webui", "WebUI",  "localboot-webui",  ROOT / "services" / "web-ui",  _BINARY_KEYS | {"bundle"},
-           Bundle("bun run build", ".output", "gz")),
+    Module("localboot",       "CLI",    "localboot",        ROOT / "applications" / "cli", _BINARY_KEYS,              None,                              "cli"),
+    Module("localbootd",      "Daemon", "localbootd",       ROOT / "services" / "daemon",  _BINARY_KEYS,              None,                              "daemon"),
+    Module("localboot-webui", "WebUI",  "localboot-webui",  ROOT / "services" / "web-ui",  _BINARY_KEYS | {"bundle"}, Bundle("bun run build", ".output", "gz"), "web-ui"),
 )
 
 
@@ -515,7 +514,7 @@ def build_binary(
     filename = OUTPUT_FORMAT.format(
         name=module.binary_name, target=target.key, version=version, extension=target.extension,
     )
-    output_dir = ARTIFACTS / module.key
+    output_dir = ARTIFACTS / (module.artifact_dir or module.key)
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / filename
 
@@ -554,7 +553,7 @@ def build_archive(
     filename = OUTPUT_FORMAT.format(
         name=module.binary_name, target="bundle", version=version, extension=archive_ext,
     )
-    archive_dir = ARTIFACTS / module.key
+    archive_dir = ARTIFACTS / (module.artifact_dir or module.key)
     archive_dir.mkdir(parents=True, exist_ok=True)
     archive_path = archive_dir / filename
 

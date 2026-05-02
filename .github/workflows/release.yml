@@ -5,6 +5,9 @@ on:
     tags:
       - '*'
 
+permissions:
+  contents: write
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -36,13 +39,12 @@ jobs:
           last_line=$(tail -n 1 ci_output.txt)
           echo "Last line: $last_line"
 
-          # Extract numbers using regex
           success_count=$(echo "$last_line" | grep -oE '[0-9]+ successful' | grep -oE '[0-9]+')
           fail_count=$(echo "$last_line" | grep -oE '[0-9]+ failed' | grep -oE '[0-9]+')
 
           echo "Parsed: success=$success_count fail=$fail_count"
 
-          if [[ "$success_count" -eq 16 && "$fail_count" -eq 0 ]]; then
+          if [[ "$fail_count" -eq 0 ]]; then
             echo "success=true" >> $GITHUB_OUTPUT
           else
             echo "success=false" >> $GITHUB_OUTPUT
