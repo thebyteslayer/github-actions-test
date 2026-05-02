@@ -1,9 +1,9 @@
-name: Release on Tag
+name: Version Release
 
 on:
   push:
     tags:
-      - '*'
+      - 'v*'
 
 permissions:
   contents: write
@@ -12,8 +12,37 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          # CLI
+          - module: cli
+            target: linux-amd64
+          - module: cli
+            target: linux-arm64
+          - module: cli
+            target: windows-amd64
+          - module: cli
+            target: windows-arm64
+          - module: cli
+            target: darwin-arm64
+
+          # Daemon
+          - module: daemon
+            target: linux-amd64
+          - module: daemon
+            target: linux-arm64
+
+          # WebUI (normal)
+          - module: webui
+            target: linux-amd64
+
+          # WebUI bundle
+          - module: webui
+            target: bundle
 
     steps:
       - name: Checkout repo
@@ -21,41 +50,56 @@ jobs:
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
+        if: matrix.module == 'webui'
 
-      - name: Install dependencies (web-ui)
+      - name: Install WebUI deps
+        if: matrix.module == 'webui'
         working-directory: services/web-ui
         run: bun install
 
-      - name: Run CI script
-        id: ci
+      - name: Run CI (verbose)
         run: |
-          python ci.py | tee ci_output.txt
+          python ci.py \
+            --module ${{ matrix.module }} \
+            --target ${{ matrix.target }} \
+            --verbose | tee ci_output.txt
 
-      - name: Check CI result
-        id: check
+      - name: Validate CI result
         run: |
           last_line=$(tail -n 1 ci_output.txt)
-          echo "Last line: $last_line"
+          echo "$last_line"
 
-          success_count=$(echo "$last_line" | grep -oE '[0-9]+ successful' | grep -oE '[0-9]+')
-          fail_count=$(echo "$last_line" | grep -oE '[0-9]+ failed' | grep -oE '[0-9]+')
-
-          echo "Parsed: success=$success_count fail=$fail_count"
-
-          if [[ "$fail_count" -eq 0 ]]; then
-            echo "success=true" >> $GITHUB_OUTPUT
+          if [[ "$last_line" == *"0 failed"* ]]; then
+            echo "build ok"
           else
-            echo "success=false" >> $GITHUB_OUTPUT
+            echo "build failed"
             exit 1
           fi
 
-      - name: Create GitHub Release and upload artifacts
-        if: steps.check.outputs.success == 'true'
-        uses: softprops/action-gh-release@v2
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ github.ref_name }}
-          files: artifacts/**
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: ${{ matrix.module }}-${{ matrix.target }}
+          path: artifacts/
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-artifacts
+
+      - name: Show artifacts
+        run: ls -R all-artifacts
+
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "all-artifacts/**"
+          allowUpdates: true
+          draft: false
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
