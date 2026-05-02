@@ -166,7 +166,7 @@ def build(
         module_path = module.path
         applicable = [t for t in targets if t.key in module.valid_targets]
 
-        if module.bundle is not None and any(t.archive for t in applicable):
+        if module.bundle is not None and applicable:
             print(f"  {DIM}bundling assets...{RESET}", end="", flush=True)
             try:
                 build_assets(module_path, module.bundle, verbose=verbose)
