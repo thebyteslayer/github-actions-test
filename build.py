@@ -550,9 +550,7 @@ def build_archive(
 
     version_file = module_path / "version.txt"
     version = version_file.read_text().strip() if version_file.exists() else "0.0.0"
-    filename = OUTPUT_FORMAT.format(
-        name=module.binary_name, target="bundle", version=version, extension=archive_ext,
-    )
+    filename = f"{module.binary_name}-v{version}{archive_ext}"
     archive_dir = ARTIFACTS / (module.artifact_dir or module.key)
     archive_dir.mkdir(parents=True, exist_ok=True)
     archive_path = archive_dir / filename

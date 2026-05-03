@@ -6,19 +6,19 @@ def run(cmd):
     print(f"\n👉 Running: {' '.join(cmd)}")
     result = subprocess.run(cmd, text=True)
     if result.returncode != 0:
-        raise SystemExit(f"❌ Command failed: {' '.join(cmd)}")
+        raise SystemExit(f"Command failed: {' '.join(cmd)}")
 
 
 def main():
-    version = input("Enter version number (e.g. 1.0.11): ").strip()
+    version = input("Enter version number: ").strip()
 
     if not version:
-        print("❌ Version cannot be empty")
+        print("Version cannot be empty")
         return
 
     tag = f"v{version}"
 
-    commit_message = f"test {version}"
+    commit_message = f"{version}"
     release_message = f"Release {tag}"
 
     # Git commands
@@ -28,7 +28,7 @@ def main():
     run(["git", "tag", "-a", tag, "-m", release_message])
     run(["git", "push", "origin", tag])
 
-    print(f"\n✅ Release {tag} completed successfully!")
+    print(f"\nRelease {tag} completed successfully!")
 
 
 if __name__ == "__main__":
