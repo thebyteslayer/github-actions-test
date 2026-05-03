@@ -3,7 +3,7 @@ import subprocess
 
 def run(cmd):
     """Run a shell command and stream output."""
-    print(f"\n👉 Running: {' '.join(cmd)}")
+    print(f"\nRunning: {' '.join(cmd)}")
     result = subprocess.run(cmd, text=True)
     if result.returncode != 0:
         raise SystemExit(f"Command failed: {' '.join(cmd)}")

@@ -41,18 +41,18 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       # -------------------------
       # Toolchains (latest)
       # -------------------------
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
       - name: Setup Go (no cache)
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: "1.23"
           cache: false
@@ -89,7 +89,7 @@ jobs:
       # Upload artifacts (fast, no compression)
       # -------------------------
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.module }}-${{ matrix.target }}
           path: artifacts/
@@ -103,12 +103,12 @@ jobs:
 
     steps:
       - name: Checkout (for GitHub release context)
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: artifacts
 
