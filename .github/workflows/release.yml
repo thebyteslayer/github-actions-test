@@ -1,4 +1,4 @@
-name: CI Build Matrix
+name: CI
 
 on:
   push:
