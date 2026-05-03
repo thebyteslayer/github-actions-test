@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@v4
 
       # -------------------------
-      # Toolchain
+      # Toolchain (global)
       # -------------------------
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -81,7 +81,7 @@ jobs:
         run: ls -R artifacts || true
 
       # -------------------------
-      # Upload artifacts for debugging
+      # Upload artifacts
       # -------------------------
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -97,30 +97,41 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout (for release metadata)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Inspect artifacts
-        run: ls -R artifacts
-
       # -------------------------
-      # FIX: flatten directories → files only
+      # Flatten directories → files only
       # -------------------------
-      - name: Flatten artifacts for release
+      - name: Flatten artifacts
         run: |
           mkdir -p release_files
           find artifacts -type f -exec cp {} release_files/ \;
 
       # -------------------------
-      # Create GitHub Release (FILES ONLY)
+      # Create GitHub Release
       # -------------------------
-      - name: Create GitHub Release
+      - name: Create Release
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
           draft: false
           prerelease: false
+
+          # GitHub-generated release notes
+          generateReleaseNotes: true
+
+          # optional quality-of-life
+          makeLatest: true
+
+          # only files, never folders
           artifacts: "release_files/*"
+
           token: ${{ secrets.GITHUB_TOKEN }}
