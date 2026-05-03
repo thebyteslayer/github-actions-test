@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@v4
 
       # -------------------------
-      # Global toolchain
+      # Toolchain
       # -------------------------
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -75,11 +75,14 @@ jobs:
             --target ${{ matrix.target }}
 
       # -------------------------
-      # Artifacts debug
+      # Debug artifacts
       # -------------------------
       - name: Show artifacts
         run: ls -R artifacts || true
 
+      # -------------------------
+      # Upload artifacts for debugging
+      # -------------------------
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -102,11 +105,22 @@ jobs:
       - name: Inspect artifacts
         run: ls -R artifacts
 
+      # -------------------------
+      # FIX: flatten directories → files only
+      # -------------------------
+      - name: Flatten artifacts for release
+        run: |
+          mkdir -p release_files
+          find artifacts -type f -exec cp {} release_files/ \;
+
+      # -------------------------
+      # Create GitHub Release (FILES ONLY)
+      # -------------------------
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
           draft: false
           prerelease: false
-          artifacts: "artifacts/**/*"
+          artifacts: "release_files/*"
           token: ${{ secrets.GITHUB_TOKEN }}
