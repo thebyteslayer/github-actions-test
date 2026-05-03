@@ -97,7 +97,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout (for release metadata)
+      - name: Checkout (for GitHub API context)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -116,6 +116,24 @@ jobs:
           find artifacts -type f -exec cp {} release_files/ \;
 
       # -------------------------
+      # Generate proper GitHub release notes
+      # -------------------------
+      - name: Generate release notes
+        id: notes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = context.ref.replace('refs/tags/', '');
+
+            const result = await github.rest.repos.generateReleaseNotes({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tag
+            });
+
+            return result.data.body;
+
+      # -------------------------
       # Create GitHub Release
       # -------------------------
       - name: Create Release
@@ -125,13 +143,10 @@ jobs:
           draft: false
           prerelease: false
 
-          # GitHub-generated release notes
-          generateReleaseNotes: true
+          # ✅ REAL structured release notes
+          body: ${{ steps.notes.outputs.result }}
 
-          # optional quality-of-life
-          makeLatest: true
-
-          # only files, never folders
+          # ✅ ONLY files (no directories)
           artifacts: "release_files/*"
 
           token: ${{ secrets.GITHUB_TOKEN }}
