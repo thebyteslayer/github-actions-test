@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@v4
 
       # -------------------------
-      # Toolchain (global)
+      # Toolchain
       # -------------------------
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -52,20 +52,20 @@ jobs:
           go-version: "1.22"
 
       # -------------------------
-      # WebUI deps only
+      # WebUI only
       # -------------------------
       - name: Setup Bun
         if: matrix.module == 'webui'
         uses: oven-sh/setup-bun@v2
 
-      - name: Install WebUI deps
+      - name: Install WebUI dependencies
         if: matrix.module == 'webui'
         working-directory: services/web-ui
         shell: bash
         run: bun install
 
       # -------------------------
-      # Build
+      # Build step
       # -------------------------
       - name: Run CI build
         shell: bash
@@ -75,9 +75,9 @@ jobs:
             --target ${{ matrix.target }}
 
       # -------------------------
-      # Debug artifacts
+      # Debug
       # -------------------------
-      - name: Show artifacts
+      - name: List artifacts
         run: ls -R artifacts || true
 
       # -------------------------
@@ -89,7 +89,6 @@ jobs:
           name: ${{ matrix.module }}-${{ matrix.target }}
           path: artifacts/
           if-no-files-found: error
-          compression-level: 0
 
 
   release:
@@ -97,18 +96,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout (for GitHub API context)
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
       # -------------------------
-      # Flatten directories → files only
+      # IMPORTANT: flatten folders → files only
       # -------------------------
       - name: Flatten artifacts
         run: |
@@ -116,25 +110,7 @@ jobs:
           find artifacts -type f -exec cp {} release_files/ \;
 
       # -------------------------
-      # Generate proper GitHub release notes
-      # -------------------------
-      - name: Generate release notes
-        id: notes
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const tag = context.ref.replace('refs/tags/', '');
-
-            const result = await github.rest.repos.generateReleaseNotes({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag_name: tag
-            });
-
-            return result.data.body;
-
-      # -------------------------
-      # Create GitHub Release
+      # Create GitHub Release (clean notes)
       # -------------------------
       - name: Create Release
         uses: ncipollo/release-action@v1
@@ -143,10 +119,10 @@ jobs:
           draft: false
           prerelease: false
 
-          # ✅ REAL structured release notes
-          body: ${{ steps.notes.outputs.result }}
+          # ✅ FIX: clean GitHub-generated release notes
+          generateReleaseNotes: true
 
-          # ✅ ONLY files (no directories)
+          # only upload files, never directories
           artifacts: "release_files/*"
 
           token: ${{ secrets.GITHUB_TOKEN }}
