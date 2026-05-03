@@ -1,12 +1,13 @@
 import subprocess
 
 
-def run(cmd):
+def run(cmd, check=True):
     """Run a shell command and stream output."""
     print(f"\nRunning: {' '.join(cmd)}")
     result = subprocess.run(cmd, text=True)
-    if result.returncode != 0:
+    if check and result.returncode != 0:
         raise SystemExit(f"Command failed: {' '.join(cmd)}")
+    return result.returncode
 
 
 def main():
@@ -21,11 +22,22 @@ def main():
     commit_message = f"{version}"
     release_message = f"Release {tag}"
 
-    # Git commands
+    # Stage changes
     run(["git", "add", "."])
-    run(["git", "commit", "-m", commit_message])
-    run(["git", "push"])
-    run(["git", "tag", "-a", tag, "-m", release_message])
+
+    # Try to commit (but don't fail if nothing to commit)
+    commit_rc = run(["git", "commit", "-m", commit_message], check=False)
+    if commit_rc != 0:
+        print("No changes to commit, continuing...")
+    else:
+        run(["git", "push"])
+
+    # Create tag (don't fail if it already exists)
+    tag_rc = run(["git", "tag", "-a", tag, "-m", release_message], check=False)
+    if tag_rc != 0:
+        print(f"Tag {tag} may already exist, continuing...")
+
+    # Push tag
     run(["git", "push", "origin", tag])
 
     print(f"\nRelease {tag} completed successfully!")
