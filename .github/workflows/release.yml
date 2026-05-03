@@ -8,9 +8,14 @@ on:
 permissions:
   contents: write
 
+# Opt into future Node runtime early (removes warnings)
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: true
+
 
 jobs:
   build:
@@ -36,20 +41,21 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # -------------------------
-      # Toolchain
+      # Toolchains (latest)
       # -------------------------
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Setup Go
+      - name: Setup Go (no cache)
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.23"
+          cache: false
 
       # -------------------------
       # WebUI only
@@ -58,14 +64,13 @@ jobs:
         if: matrix.module == 'webui'
         uses: oven-sh/setup-bun@v2
 
-      - name: Install WebUI dependencies
+      - name: Install WebUI deps
         if: matrix.module == 'webui'
         working-directory: services/web-ui
-        shell: bash
         run: bun install
 
       # -------------------------
-      # Build step
+      # Build
       # -------------------------
       - name: Run CI build
         shell: bash
@@ -75,13 +80,13 @@ jobs:
             --target ${{ matrix.target }}
 
       # -------------------------
-      # Debug
+      # Debug output (optional)
       # -------------------------
       - name: List artifacts
         run: ls -R artifacts || true
 
       # -------------------------
-      # Upload artifacts
+      # Upload artifacts (fast, no compression)
       # -------------------------
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -89,6 +94,7 @@ jobs:
           name: ${{ matrix.module }}-${{ matrix.target }}
           path: artifacts/
           if-no-files-found: error
+          compression-level: 0
 
 
   release:
@@ -96,13 +102,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout (for GitHub release context)
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
       # -------------------------
-      # IMPORTANT: flatten folders → files only
+      # Flatten everything (required for release-action)
       # -------------------------
       - name: Flatten artifacts
         run: |
@@ -110,7 +121,7 @@ jobs:
           find artifacts -type f -exec cp {} release_files/ \;
 
       # -------------------------
-      # Create GitHub Release (clean notes)
+      # Create GitHub Release (auto notes)
       # -------------------------
       - name: Create Release
         uses: ncipollo/release-action@v1
@@ -119,10 +130,10 @@ jobs:
           draft: false
           prerelease: false
 
-          # ✅ FIX: clean GitHub-generated release notes
+          # clean GitHub-generated changelog
           generateReleaseNotes: true
 
-          # only upload files, never directories
+          # only files, no folders
           artifacts: "release_files/*"
 
           token: ${{ secrets.GITHUB_TOKEN }}
